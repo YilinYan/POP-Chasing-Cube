@@ -103,9 +103,7 @@ class Obj {
                   };
   }
 
-  setpState() {
-    return true;qw
-  }
+  stepState() { return this.cnt == 0; }
 
 }
 
@@ -123,8 +121,8 @@ class Border {
     ctx.lineWidth = this.width
     ctx.strokeRect(this.topLeft.x, this.topLeft.y, this.dimension.width, this.dimension.height)
   }
+  stepState() { return false; }
 
-  stepState() { return this.cnt == 0; }
 }
 
 
@@ -265,7 +263,7 @@ class Game {
   stepState() {
 //    if (this.states.downKeys.size === 0) return false
 
-    let updated = this.player.stepState(this.states.downKeys) || this.obj.setpState();
+    let updated = this.player.stepState(this.states.downKeys) || this.obj.stepState();
     // dummy operations just to give the idea of `|=`
     // updated |= this.border.stepState()
     // updated |= this.background.stepState()
