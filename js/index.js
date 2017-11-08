@@ -63,17 +63,66 @@ class UI {
 
 }
 
+class ObjSystem {
+  constructor(ctx, props) {
+    this.ctx = ctx
+    this.objs = []
+    this.queue = []
+    this.qcnt = 0
+    this.cnt = 0
+    this.maxCnt = 5
+  }
+
+  insert(center, speed) {
+    if(this.qcnt > this.maxCnt) return
+    this.queue[this.qcnt] = new Obj(this.ctx, {})
+    let a = this.queue[this.qcnt++]
+    a.speed.x = speed.x || a.speed.x
+    a.speed.y = speed.y || a.speed.y
+    a.center.x = center.x + speed.x || a.center.x
+    a.center.y = center.y + speed.y || a.center.y
+  }
+
+  update(player, border) {
+//    console.log(this.cnt)
+//    console.log(this.objs)
+    if(this.cnt == 0) this.insert({}, {})
+
+    for(var i = 0; i < this.qcnt && this.cnt < this.maxCnt; ++i) this.objs[this.cnt++] = this.queue[i]
+    this.qcnt = 0
+    for(var i = 0; i < this.cnt; ++i) {
+
+      if(this.objs[i].checkCollision(player) == 1) {
+        if(this.objs[i].changecolor == 1) ++this.maxCnt
+        player.color = this.objs[i].color
+        player.changecolor = this.objs[i].changecolor
+        delete this.objs[i]
+        --this.cnt
+        for(var j = i; j < this.cnt; ++j)
+          this.objs[j] = this.objs[j+1]
+      }
+    }
+
+    for(var i = 0; i < this.cnt; ++i) {
+    //    this.objs[0].update(player, border, this)
+      this.objs[i].update(player, border, this)
+//      console.log(this.objs[0].speed)
+
+    //if(this.cnt > 1) this.objs[1].update(player, border, this)
+    }
+  }
+}
+
 class Obj {
   constructor(ctx, props) {
     this.ctx = ctx;
-    this.center = props.center;
-    this.width = props.width;
-    this.change = 0;
-    this.cnt = 0;
-    this.intv = 0;
-    this.changecolor = 0;
+    this.center = props.center || { x: Math.random() * window.innerWidth * 0.8 + 20,
+                                    y: Math.random() * window.innerHeight * 0.8 + 20 }
+    this.width = props.width || 30
+    this.speed = props.speed || { x: Math.random() * 8 - 4,
+                                  y: Math.random() * 8 - 4 }
+    this.changecolor = (Math.random() < 0.2);
     this.color = getRandomColor();
-    this.speed = {x: 0, y: 0}
   }
 
   draw() {
@@ -84,26 +133,32 @@ class Obj {
     ctx.strokeRect(this.center.x - this.width / 4, this.center.y - this.width / 4, this.width / 2, this.width / 2)
   }
 
-  update(player, border) {
-    this.checkCollision(player)
-    this.check(border)
+  update(player, border, objSystem) {
+    this.check(border, objSystem)
     this.center.x += this.speed.x
     this.center.y += this.speed.y
     this.draw()
   }
 
-  check(border) {
+  check(border, objSystem) {
+//    console.log(this.speed)
     if(this.center.x < border.width + this.width / 2 ||
-      this.center.x > border.dimension.width - this.width / 2)
-      this.speed.x = -this.speed.x
+      this.center.x > border.dimension.width - this.width / 2) {
+        objSystem.insert (this.center,
+                          {x: -this.speed.x, y: -this.speed.y})
+        this.speed.x = -this.speed.x
+      }
 
-    if(this.center.y < border.width + this.width / 2 ||
-      this.center.y > border.dimension.height - this.width / 2)
-      this.speed.y = -this.speed.y
+    else if(this.center.y < border.width + this.width / 2 ||
+      this.center.y > border.dimension.height - this.width / 2) {
+        objSystem.insert (this.center,
+                          {x: -this.speed.x, y: -this.speed.y})
+        this.speed.y = -this.speed.y
+    }
   }
 
   checkCollision(player) {
-     if (this.change == 1) ++this.cnt;
+/*     if (this.change == 1) ++this.cnt;
 
      if (this.cnt > this.intv) {
         this.resetPos();
@@ -113,28 +168,24 @@ class Obj {
         this.speed.y = Math.random() * 10 - 5;
         this.cnt = 0;
         this.change = 0;
-      }
-
-     if (this.change == 0 && abs(player.center.x - this.center.x) < 30 && abs(player.center.y - this.center.y) < 30 ) {
-       this.change = 1;
-       this.center = {x: -20, y: -20};
-       this.intv = Math.random() * 50 + 10;
-
-       player.changecolor = this.changecolor;
-       player.color = this.color;
-
-       console.log(player.center);
-       console.log(this.center);
+      }*/
+     if (abs(player.center.x - this.center.x) < 30 && abs(player.center.y - this.center.y) < 30 ) {
+       return 1
      }
+     return 0
   }
 
-  resetPos() {
+  reset() {
+    this.changecolor = (Math.random() < 0.2);
+    this.color = getRandomColor();
     this.center = { x: Math.random() * window.innerWidth * 0.8 + 20,
                     y: Math.random() * window.innerHeight * 0.8 + 20
-                  };
-  }
+                  }
 
-  stepState() { return this.cnt == 0; }
+    this.center = { x: Math.random() * window.innerWidth * 0.8 + 20,
+                    y: Math.random() * window.innerHeight * 0.8 + 20
+                  }
+  }
 
 }
 
@@ -202,7 +253,6 @@ class Player {
     this.speed.x = Min(this.speed.x, this.maxSpeed)
     this.speed.y = Max(this.speed.y, -this.maxSpeed)
     this.speed.y = Min(this.speed.y, this.maxSpeed)
-    console.log(this.speed)
 
     this.center.x += this.speed.x
     this.center.y += this.speed.y
@@ -263,13 +313,9 @@ class Game {
       width: lineWidth
     })
 
-    this.obj = new Obj(ctx, {
-      center: {
-        x: dimension.width / 2,
-        y: dimension.height / 2
-      },
-      width: 30
-    })
+    this.objSystem = new ObjSystem(ctx, {})
+    this.objSystem.insert({}, {})
+
 
     this.ui = new UI(ctx)
 
@@ -295,7 +341,7 @@ class Game {
     this.background.update()
     this.border.update()
     this.player.update(this.states.downKeys, this.border)
-    this.obj.update(this.player, this.border)
+    this.objSystem.update(this.player, this.border)
     this.ui.update()
   }
 
@@ -332,6 +378,7 @@ class Game {
   start() {
     this.background.draw();
     this.border.draw();
+
     this.tick()
   }
 }
