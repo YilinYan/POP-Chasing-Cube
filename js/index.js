@@ -10,7 +10,9 @@ class Background {
     ctx.fillRect(0, 0, this.dimension.width, this.dimension.height)
   }
 
-  stepState() { return false }
+  update() {
+    this.draw()
+  }
 }
 
 function abs(x) {
@@ -26,11 +28,23 @@ var getRandomColor = function(){
   })('');
 }
 
+function Max(a, b) { if(a > b) return a
+  return b
+}
+
+function Min(a, b) { if(a < b) return a
+  return b
+}
+
 class UI {
   constructor(ctx) {
     this.ctx = ctx;
     this.color = '#ff0000';
     this.changecolor = 0;
+  }
+
+  update() {
+    this.draw()
   }
 
   draw() {
@@ -59,6 +73,7 @@ class Obj {
     this.intv = 0;
     this.changecolor = 0;
     this.color = getRandomColor();
+    this.speed = {x: 0, y: 0}
   }
 
   draw() {
@@ -69,19 +84,35 @@ class Obj {
     ctx.strokeRect(this.center.x - this.width / 4, this.center.y - this.width / 4, this.width / 2, this.width / 2)
   }
 
+  update(player, border) {
+    this.checkCollision(player)
+    this.check(border)
+    this.center.x += this.speed.x
+    this.center.y += this.speed.y
+    this.draw()
+  }
+
+  check(border) {
+    if(this.center.x < border.width + this.width / 2 ||
+      this.center.x > border.dimension.width - this.width / 2)
+      this.speed.x = -this.speed.x
+
+    if(this.center.y < border.width + this.width / 2 ||
+      this.center.y > border.dimension.height - this.width / 2)
+      this.speed.y = -this.speed.y
+  }
+
   checkCollision(player) {
-  //   console.log(player.center);
-    // console.log(this.center);
-     if (this.change == 1) {
-       ++this.cnt;
-       console.log(this.cnt);
-     }
+     if (this.change == 1) ++this.cnt;
 
      if (this.cnt > this.intv) {
         this.resetPos();
         this.changecolor = (Math.random() < 0.2);
         this.color = getRandomColor();
-        this.cnt = 0; this.change = 0;
+        this.speed.x = Math.random() * 10 - 5;
+        this.speed.y = Math.random() * 10 - 5;
+        this.cnt = 0;
+        this.change = 0;
       }
 
      if (this.change == 0 && abs(player.center.x - this.center.x) < 30 && abs(player.center.y - this.center.y) < 30 ) {
@@ -121,20 +152,23 @@ class Border {
     ctx.lineWidth = this.width
     ctx.strokeRect(this.topLeft.x, this.topLeft.y, this.dimension.width, this.dimension.height)
   }
-  stepState() { return false; }
+
+  update() {
+    this.draw()
+  }
 
 }
-
 
 class Player {
   constructor(ctx, props) {
     this.ctx = ctx
     this.center = props.center
     this.width = props.width
-    this.speed = props.speed
+    this.maxSpeed = 10
+    this.speed = {x: 0, y: 0}
     this.commands = {}
-    this.changecolor = 0;
-    this.color = '#ef8354';
+    this.changecolor = 0
+    this.color = '#ef8354'
   }
 
   draw() {
@@ -145,6 +179,42 @@ class Player {
     ctx.strokeRect(this.center.x - this.width / 4, this.center.y - this.width / 4, this.width / 2, this.width / 2)
   }
 
+  update(keys, border) {
+    let a = 1
+    let b = 0.5
+    if (keys.has('ArrowUp') || keys.has('w')) {
+      this.speed.y -= a
+    }
+    else if (keys.has('ArrowDown') || keys.has('s')) {
+      this.speed.y += a
+    }
+    else if(this.speed.y != 0) (this.speed.y > 0) ? this.speed.y -= b : this.speed.y += b
+
+    if (keys.has('ArrowRight') || keys.has('d')) {
+      this.speed.x += a
+    }
+    else if (keys.has('ArrowLeft') || keys.has('a')) {
+      this.speed.x -= a
+    }
+    else if(this.speed.x != 0) (this.speed.x > 0) ? this.speed.x -= b : this.speed.x += b
+
+    this.speed.x = Max(this.speed.x, -this.maxSpeed)
+    this.speed.x = Min(this.speed.x, this.maxSpeed)
+    this.speed.y = Max(this.speed.y, -this.maxSpeed)
+    this.speed.y = Min(this.speed.y, this.maxSpeed)
+    console.log(this.speed)
+
+    this.center.x += this.speed.x
+    this.center.y += this.speed.y
+
+    this.center.x = Max(this.center.x, border.width + this.width / 2)
+    this.center.x = Min(this.center.x, border.dimension.width - this.width / 2)
+    this.center.y = Max(this.center.y, border.width + this.width / 2)
+    this.center.y = Min(this.center.y, border.dimension.height - this.width / 2)
+
+    this.draw();
+  }
+/*
   stepState(keys) {
     let updated = false
     if (keys.has('ArrowUp') || keys.has('w')) {
@@ -168,9 +238,8 @@ class Player {
       console.log(updated)
     }
     return updated
-  }
+  }*/
 }
-
 
 class Game {
   constructor(ctx, dimension) {
@@ -223,11 +292,11 @@ class Game {
   }
 
   draw() {
-    this.background.draw()
-    this.border.draw()
-    this.player.draw()
-    this.obj.draw()
-    this.ui.draw()
+    this.background.update()
+    this.border.update()
+    this.player.update(this.states.downKeys, this.border)
+    this.obj.update(this.player, this.border)
+    this.ui.update()
   }
 
   keyDown(key) {
@@ -240,27 +309,7 @@ class Game {
     // console.log(this.states.downKeys)
   }
 
-  checkCollision() {
-    if (this.player.center.x - this.player.width / 2 < this.border.width) {
-      this.player.center.x = this.border.width + this.player.width / 2
-      console.log('hit left')
-    }
-    if (this.player.center.x + this.player.width / 2 > this.border.dimension.width) {
-      this.player.center.x = this.border.dimension.width - this.player.width / 2
-      console.log('hit right')
-    }
-    if (this.player.center.y - this.player.width / 2 < this.border.width) {
-      this.player.center.y = this.border.width + this.player.width / 2
-      console.log('hit top')
-    }
-    if (this.player.center.y + this.player.width / 2 > this.border.dimension.height) {
-      this.player.center.y = this.border.dimension.height - this.player.width / 2
-      console.log('hit bottom')
-    }
-    return false
-  }
-
-  stepState() {
+/*  stepState() {
 //    if (this.states.downKeys.size === 0) return false
 
     let updated = this.player.stepState(this.states.downKeys) || this.obj.stepState();
@@ -273,19 +322,16 @@ class Game {
       this.obj.checkCollision(this.player)
     }
     return updated
-  }
+*/
 
   tick() {
-    if (this.states.needRedraw) {
-  //    console.log(this.player.center);
-      this.draw()
-    }
-
-    this.states.needRedraw = this.stepState()
+    this.draw()
     window.requestAnimationFrame(this.boundFn.tick)
   }
 
   start() {
+    this.background.draw();
+    this.border.draw();
     this.tick()
   }
 }
@@ -300,7 +346,7 @@ function bindKeys(game) {
   })
 }
 
-function init() {
+(function init() {
   let $canvas = document.getElementsByTagName('canvas')[0]
   $canvas.width = window.innerWidth
   $canvas.height = window.innerHeight
@@ -312,9 +358,7 @@ function init() {
       height: $canvas.height
     }
   )
+
   bindKeys(game)
   game.start()
-}
-
-
-init()
+})()
