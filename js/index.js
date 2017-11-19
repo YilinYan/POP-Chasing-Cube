@@ -49,6 +49,7 @@ class UI {
 
   draw() {
     let a = 50;
+    this.ctx.lineWidth = 1
     this.ctx.beginPath();
     this.ctx.moveTo(a,a-10);
     this.ctx.bezierCurveTo(a+12,a-30,a+30,a-10,a+20,a+5);
@@ -93,7 +94,7 @@ class ObjSystem {
     for(var i = 0; i < this.cnt; ++i) {
 
       if(this.objs[i].checkCollision(player) == 1) {
-        if(this.objs[i].changecolor == 1) ++this.maxCnt
+  //      if(this.objs[i].changecolor == 1) ++this.maxCnt
         player.color = this.objs[i].color
         player.changecolor = this.objs[i].changecolor
         delete this.objs[i]
@@ -116,12 +117,13 @@ class ObjSystem {
 class Obj {
   constructor(ctx, props) {
     this.ctx = ctx;
+    this.maxSpeed = 8;
     this.center = props.center || { x: Math.random() * window.innerWidth * 0.8 + 20,
                                     y: Math.random() * window.innerHeight * 0.8 + 20 }
     this.width = props.width || 30
-    this.speed = props.speed || { x: Math.random() * 8 - 4,
-                                  y: Math.random() * 8 - 4 }
-    this.changecolor = (Math.random() < 0.2);
+    this.speed = props.speed || { x: Math.random() * this.maxSpeed * 2 - this.maxSpeed,
+                                  y: Math.random() * this.maxSpeed * 2 - this.maxSpeed }
+    this.changecolor = (Math.random() < 0.1);
     this.color = getRandomColor();
   }
 
@@ -146,14 +148,18 @@ class Obj {
       this.center.x > border.dimension.width - this.width / 2) {
         objSystem.insert (this.center,
                           {x: -this.speed.x, y: -this.speed.y})
-        this.speed.x = -this.speed.x
+        this.speed.x = -this.speed.x + Math.random() * 4 - 2;
+        this.speed.x = Max(this.speed.x, -this.maxSpeed)
+        this.speed.x = Min(this.speed.x, this.maxSpeed)
       }
 
     else if(this.center.y < border.width + this.width / 2 ||
       this.center.y > border.dimension.height - this.width / 2) {
         objSystem.insert (this.center,
                           {x: -this.speed.x, y: -this.speed.y})
-        this.speed.y = -this.speed.y
+        this.speed.y = -this.speed.y + Math.random() * 4 - 2;
+        this.speed.y = Max(this.speed.y, -this.maxSpeed)
+        this.speed.y = Min(this.speed.y, this.maxSpeed)
     }
   }
 
@@ -195,13 +201,70 @@ class Border {
     this.topLeft = props.topLeft
     this.dimension = props.dimension
     this.width = props.width
+    this.curve = 0
+    this.ind = 0
+    this.pos = 0
+    this.inten = 0
+    this.flag = 0
+  }
+
+  set(ind, pos) {
+    this.curve = 40
+    this.ind = ind
+    this.inten = 10
+    this.pos = pos
+    this.flag = 1
   }
 
   draw() {
     let ctx = this.ctx
-    ctx.strokeStyle = '#4f5d75'
-    ctx.lineWidth = this.width
-    ctx.strokeRect(this.topLeft.x, this.topLeft.y, this.dimension.width, this.dimension.height)
+//    ctx.strokeStyle = '#4f5d75'
+//    ctx.lineWidth = this.width
+//    ctx.strokeRect(this.topLeft.x, this.topLeft.y, this.dimension.width, this.dimension.height)
+
+    ctx.lineWidth = this.width * 2
+    let add = -10
+    this.ctx.fillStyle = '#4f5d75'
+    if(this.curve > 0) {
+      --this.curve
+      if(this.inten < 60 && this.flag == 1) this.inten += Math.random() * this.inten
+      else {
+        this.flag = 0
+        this.inten -= Math.random() * this.inten
+      }
+      this.ctx.beginPath()
+      this.drawLine(
+               {x: this.dimension.width + add, y: 0},
+               {x: this.dimension.width + add, y: this.pos},
+               {x: this.dimension.width + this.inten + add, y: this.pos})
+      this.drawLine(
+               {x: this.dimension.width + this.inten + add, y: this.pos},
+               {x: this.dimension.width + add, y: this.pos},
+               {x: this.dimension.width + add, y: this.dimension.height + 50})
+      this.ctx.lineTo(this.dimension.width + add + 50, this.dimension.height + 50)
+      this.ctx.lineTo(this.dimension.width + add + 50, 0)
+      this.ctx.lineTo(this.dimension.width + add, 0)
+//      this.ctx.moveTo(this.dimension.width + 10 + add, 0)
+      this.ctx.closePath()
+      this.ctx.fill()
+
+    }
+
+    else {
+      this.ctx.strokeStyle = '#4f5d75'
+      this.ctx.beginPath()
+      this.drawLine({x: this.dimension.width + 10, y: 0},
+               {x: this.dimension.width + 10,  y: this.dimension.height + 50},
+               {x: this.dimension.width + 10,  y: this.dimension.height + 50})
+      this.ctx.stroke()
+
+    }
+
+  }
+
+  drawLine(A, B, C) {
+    this.ctx.moveTo(A.x, A.y)
+    this.ctx.quadraticCurveTo(B.x, B.y, C.x, C.y)
   }
 
   update() {
@@ -215,7 +278,7 @@ class Player {
     this.ctx = ctx
     this.center = props.center
     this.width = props.width
-    this.maxSpeed = 10
+    this.maxSpeed = 20
     this.speed = {x: 0, y: 0}
     this.commands = {}
     this.changecolor = 0
@@ -231,7 +294,7 @@ class Player {
   }
 
   update(keys, border) {
-    let a = 1
+    let a = 2
     let b = 0.5
     if (keys.has('ArrowUp') || keys.has('w')) {
       this.speed.y -= a
@@ -257,10 +320,29 @@ class Player {
     this.center.x += this.speed.x
     this.center.y += this.speed.y
 
-    this.center.x = Max(this.center.x, border.width + this.width / 2)
-    this.center.x = Min(this.center.x, border.dimension.width - this.width / 2)
-    this.center.y = Max(this.center.y, border.width + this.width / 2)
-    this.center.y = Min(this.center.y, border.dimension.height - this.width / 2)
+//    console.log(border)
+    let l = border.width
+    let r = border.dimension.width
+    let u = border.width
+    let d = border.dimension.height
+    let add = abs(this.speed.x) + abs(this.speed.y) + Math.random() * 20;
+    if(this.center.x  > r - this.width / 2) {
+        this.center.x = r - this.width / 2 - add;
+        this.speed.x = -this.speed.x
+        border.set(2, this.center.y)
+    }
+    if(this.center.x  < l + this.width / 2) {
+        this.center.x = l + this.width / 2 + add;
+        this.speed.x = -this.speed.x;
+    }
+    if(this.center.y > d - this.width / 2) {
+        this.center.y = d - this.width / 2 - add;
+        this.speed.y = -this.speed.y;
+    }
+    if(this.center.y < u + this.width / 2) {
+        this.center.y = u + this.width / 2 + add;
+        this.speed.y = -this.speed.y;
+    }
 
     this.draw();
   }
