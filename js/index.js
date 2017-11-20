@@ -19,6 +19,9 @@ function abs(x) {
   if(x > 0) return x;
   return -x;
 }
+function lerp(a, b, c){
+  return (b-a)*c + a
+}
 
 var getRandomColor = function(){
   return  '#' +
@@ -114,29 +117,61 @@ class ObjSystem {
   }
 }
 
+
+var intv = 30
 class Obj {
   constructor(ctx, props) {
     this.ctx = ctx;
     this.maxSpeed = 8;
     this.center = props.center || { x: Math.random() * window.innerWidth * 0.8 + 20,
                                     y: Math.random() * window.innerHeight * 0.8 + 20 }
-    this.width = props.width || 30
+    this.Swidth = props.width || 30
+    this.Sheight = props.width || 30
+    this.Lwidth = props.width || 30
+    this.Rwidth = props.width || 30
+    this.Uheight = props.width || 30
+    this.Dheight = props.width || 30
     this.speed = props.speed || { x: Math.random() * this.maxSpeed * 2 - this.maxSpeed,
                                   y: Math.random() * this.maxSpeed * 2 - this.maxSpeed }
     this.changecolor = (Math.random() < 0.1);
     this.color = getRandomColor();
+    this.LwidthChange = 0
+    this.RwidthChange = 0
+    this.UheightChange = 0
+    this.DheightChange = 0
   }
 
   draw() {
     let ctx = this.ctx;
-    if(this.changecolor == 0) ctx.strokeStyle = this.color;
-    else ctx.strokeStyle = getRandomColor();
+    if(this.changecolor == 0) ctx.fillStyle = this.color;
+    else ctx.fillStyle = getRandomColor();
     ctx.lineWidth = this.width / 2;
-    ctx.strokeRect(this.center.x - this.width / 4, this.center.y - this.width / 4, this.width / 2, this.width / 2)
+    ctx.fillRect(this.center.x - this.Lwidth, this.center.y - this.Uheight,
+      this.Lwidth + this.Rwidth, this.Uheight + this.Dheight)
   }
 
   update(player, border, objSystem) {
     this.check(border, objSystem)
+    if(this.RwidthChange) {
+      this.Rwidth = this.Swidth * (1 - Math.sin(this.RwidthChange / intv * 3.14))
+      --this.RwidthChange
+    }
+    else this.Rwidth = this.Swidth
+    if(this.LwidthChange) {
+      this.Lwidth = this.Swidth * (1 - Math.sin(this.LwidthChange / intv * 3.14))
+      --this.LwidthChange
+    }
+    else this.Lwidth = this.Swidth
+    if(this.UheightChange) {
+      this.Uheight = this.Swidth * (1 - Math.sin(this.UheightChange / intv * 3.14))
+      --this.UheightChange
+    }
+    else this.Uheight = this.Swidth
+    if(this.DheightChange) {
+      this.Dheight = this.Swidth * (1 - Math.sin(this.DheightChange / intv * 3.14))
+      --this.DheightChange
+    }
+    else this.Dheight = this.Swidth
     this.center.x += this.speed.x
     this.center.y += this.speed.y
     this.draw()
@@ -144,22 +179,31 @@ class Obj {
 
   check(border, objSystem) {
 //    console.log(this.speed)
-    if(this.center.x < border.width + this.width / 2 ||
-      this.center.x > border.dimension.width - this.width / 2) {
+    if(this.center.x < border.width + this.Lwidth ||
+      this.center.x > border.dimension.width - this.Rwidth) {
         objSystem.insert (this.center,
                           {x: -this.speed.x, y: -this.speed.y})
-        this.speed.x = -this.speed.x + Math.random() * 4 - 2;
-        this.speed.x = Max(this.speed.x, -this.maxSpeed)
-        this.speed.x = Min(this.speed.x, this.maxSpeed)
-      }
+        this.LwidthChange = intv * (this.center.x < border.width + this.Lwidth)
+        this.RwidthChange = intv * (this.center.x > border.dimension.width - this.Rwidth)
+        this.speed.x = -this.speed.x
+        if(this.speed.y == 0) this.speed.y = 1
+  //      this.speed.y += Math.random() * 4 - 2
+  //      this.speed.y = Max(this.speed.y, -this.maxSpeed)
+//        this.speed.y = Min(this.speed.y, this.maxSpeed)
+    }
 
-    else if(this.center.y < border.width + this.width / 2 ||
-      this.center.y > border.dimension.height - this.width / 2) {
+    else if(this.center.y < border.width + this.Uheight ||
+      this.center.y > border.dimension.height - this.Dheight) {
         objSystem.insert (this.center,
                           {x: -this.speed.x, y: -this.speed.y})
-        this.speed.y = -this.speed.y + Math.random() * 4 - 2;
-        this.speed.y = Max(this.speed.y, -this.maxSpeed)
-        this.speed.y = Min(this.speed.y, this.maxSpeed)
+
+        this.DheightChange = intv * (this.center.y < border.width + this.Uheight)
+        this.UheightChange = intv * (this.center.y > border.dimension.height - this.Dheight)
+        this.speed.y = -this.speed.y
+        if(this.speed.x == 0) this.speed.x = 1
+  //      this.speed.x += Math.random() * 4 - 2;
+//        this.speed.x = Max(this.speed.x, -this.maxSpeed)
+//        this.speed.x = Min(this.speed.x, this.maxSpeed)
     }
   }
 
@@ -175,7 +219,7 @@ class Obj {
         this.cnt = 0;
         this.change = 0;
       }*/
-     if (abs(player.center.x - this.center.x) < 30 && abs(player.center.y - this.center.y) < 30 ) {
+     if (abs(player.center.x - this.center.x) < 50 && abs(player.center.y - this.center.y) < 50 ) {
        return 1
      }
      return 0
@@ -195,6 +239,7 @@ class Obj {
 
 }
 
+var curveintv = 20
 class Border {
   constructor(ctx, props) {
     this.ctx = ctx
@@ -209,11 +254,10 @@ class Border {
   }
 
   set(ind, pos) {
-    this.curve = 40
+    this.curve = curveintv
     this.ind = ind
     this.inten = 10
     this.pos = pos
-    this.flag = 1
   }
 
   draw() {
@@ -225,13 +269,9 @@ class Border {
     ctx.lineWidth = this.width * 2
     let add = -10
     this.ctx.fillStyle = '#4f5d75'
-    if(this.curve > 0) {
-      --this.curve
-      if(this.inten < 60 && this.flag == 1) this.inten += Math.random() * this.inten
-      else {
-        this.flag = 0
-        this.inten -= Math.random() * this.inten
-      }
+    {
+      this.inten = 50 * (Math.sin(this.curve / curveintv * 3.14 * 2))
+      if(this.curve > 0) --this.curve
       this.ctx.beginPath()
       this.drawLine(
                {x: this.dimension.width + add, y: 0},
@@ -247,18 +287,17 @@ class Border {
 //      this.ctx.moveTo(this.dimension.width + 10 + add, 0)
       this.ctx.closePath()
       this.ctx.fill()
-
     }
 
-    else {
+/*    else {
       this.ctx.strokeStyle = '#4f5d75'
       this.ctx.beginPath()
       this.drawLine({x: this.dimension.width + 10, y: 0},
                {x: this.dimension.width + 10,  y: this.dimension.height + 50},
                {x: this.dimension.width + 10,  y: this.dimension.height + 50})
       this.ctx.stroke()
-
     }
+    */
 
   }
 
