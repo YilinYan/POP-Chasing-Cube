@@ -1,2 +1,2 @@
-# damnsimplegame
-damn simple game template in canvas
+# pop-chasing-cube
+now chasing..
